@@ -1,12 +1,24 @@
 let frame = 0;
-let numDots = 18;
-let strokeLength = 100;
-let strokeWidth = 15;
+let numDots = 20;
+let strokeLength = 10000;
+let strokeWidth = 100;
+let showField = false;
 
 let dots = [];
+let grid = [];
+
 
 function setup() {
-  createCanvas(800, 800);
+  /*
+  ** Canvas Setup
+  */
+  createCanvas(2000, 2000);
+  background(255);
+
+  /*
+  ** Create Dot Objects
+  */
+
   for(let i = 0; i<numDots; i++){
     const x = Math.random() * 1.4 * width - (0.2 * width)
     const y = Math.random() * 1.4 * height - (0.2 * width)
@@ -37,64 +49,83 @@ function setup() {
         x: x,
         y: y
       }],
-      length: 1,
+      length: strokeLength,
       color: color
     })
   }
-}
 
-function draw() {
-  background(220);
-  
+  /*
+  ** Create Flow Field
+  */
+
   const left_x = int(width * -0.5)
   const right_x = int(width * 1.5)
   const top_y = int(height * -0.5)
   const bottom_y = int(height * 1.5)
 
-  const resolution = int(width * 0.04)
+  const resolution = int(width * 0.01)
 
   const num_columns = (right_x - left_x) / resolution
   const num_rows = (bottom_y - top_y) / resolution
+
+  console.log("number of cols: " + num_columns)
+  console.log("number of rows: " + num_rows)
   
   let theta = Math.PI/4
-  let grid = [];
 
-  let col = 0;
-  let row = 0;
   for(let i = top_y; i < bottom_y; i+=resolution) {
     let row = [];
     for(let j = top_y; j < bottom_y; j+=resolution) {
-      // theta = (grid.length / num_rows) * Math.PI
-      theta = noise(i * 0.002, j * 0.002) * 2 * Math.PI
+      theta = noise(i * 0.001, j * 0.001) * 2 * Math.PI
       row.push(theta);
-      // ellipse(i, j, 1, 1);
-      // line(i, j, i + resolution * sin(theta) * 0.5,  j + resolution * cos(theta) * 0.5); // vector lines
-      dots.forEach((dot) => {
-        const inCol = dot.x > (j - resolution/2) && dot.x < (j + resolution/2);
-        const inRow = dot.y > (i - resolution/2) && dot.y < (i+ resolution/2);
-        if(inRow && inCol && dot.path.length < strokeLength) {
-          dot.x += sin(theta) * 7;
-          dot.y += cos(theta) * 7;
-          dot.path.push({x: dot.x, y: dot.y})
-          dot.length++
-        }
-      })
+      if(showField){
+        line(i, j, i + resolution * sin(theta) * 0.5,  j + resolution * cos(theta) * 0.5); // vector lines
+      }
     }
-    dots.forEach((dot) => {
-      let lastX = dot.path[0].x
-      let lastY = dot.path[0].y
-      stroke(dot.color.r, dot.color.g, dot.color.b)
-      // lerpStroke(lastX, lastY)
-      strokeWeight(strokeWidth)
-      dot.path.forEach((coord) => {
-        line(lastX, lastY, coord.x, coord.y)
-        lastX = coord.x
-        lastY = coord.y
-      })
-    })
     grid.push(row);
   }
 
+  /*
+  ** Calculate Paths
+  */
+
+  dots.forEach((dot) => {
+    while(dot.path.length < dot.length) {
+      const col = Math.floor((dot.x + width/2) / resolution);
+      const row = Math.floor((dot.y + height/2) / resolution);
+      const validRow = row >= 0 && row < num_rows;
+      const validCol = col >= 0 && col < num_columns;
+      if (validCol && validRow) {
+        theta = grid[row][col]
+        dot.x += sin(theta);
+        dot.y += cos(theta);
+        dot.path.push({x: dot.x, y: dot.y})
+      } else {
+        break;
+      }
+    }
+  })
+
+  /*
+  ** Draw Lines
+  */
+
+  dots.forEach((dot, index) => {
+    let lastX = dot.path[0].x
+    let lastY = dot.path[0].y
+    stroke(dot.color.r, dot.color.g, dot.color.b)
+    // lerpStroke(lastX, lastY)
+    strokeWeight(strokeWidth) // TODO: refactor strokeWidth into dot obj
+    dot.path.forEach((coord, index) => {
+      line(lastX, lastY, coord.x, coord.y)
+      lastX = coord.x
+      lastY = coord.y
+    })
+  })
+
+}
+
+function draw() {
   frame++;
 }
 
@@ -116,4 +147,8 @@ function lerpStroke(x, y) {
   const g = (rand > 0 ? rand * g1 + (1-rand) * g2 : -1 * rand * g3 + (rand + 1) * g2)
   const b = (rand > 0 ? rand * b1 + (1-rand) * b2 : -1 * rand * b3 + (rand + 1) * b2)
   stroke(r,g,b)
+}
+
+function save() {
+  saveCanvas();
 }
